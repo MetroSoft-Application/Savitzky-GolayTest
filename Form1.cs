@@ -32,19 +32,25 @@ namespace Savitzky_GolayTest
             //double cutoffFreq = 10;
 
             Debug.WriteLine("input");
-            var input = new List<double>();
+            var inputData = new double[samplingNum];
             for (int i = 0; i < samplingNum; i++)
             {
-                input.Add(GetSwept(i * samplingTime, samplingTime, samplingNum, amplitude));
-                Debug.WriteLine(input[i]);
+                inputData[i] = GetSwept(i * samplingTime, samplingTime, samplingNum, amplitude);
             }
 
             Debug.WriteLine("output");
-            var output = sav.Process(input.ToArray());
-            foreach (var item in output)
+            var outputData = sav.Process(inputData.ToArray());
+            var source = new List<GridItem>();
+            for (int i = 0; i < outputData.Length; i++)
             {
-                Debug.WriteLine(item);
+                source.Add(new GridItem
+                {
+                    Input = inputData[i]
+                    ,
+                    OutPut = outputData[i]
+                });
             }
+            dgvData.DataSource = source;
         }
 
         private double GetSwept(double sec, double samplingSec, int samplingNum, double amplitude)
