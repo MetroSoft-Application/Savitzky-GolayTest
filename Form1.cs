@@ -28,23 +28,23 @@ namespace Savitzky_GolayTest
             double samplingFreq = 8000;
             double samplingTime = 1 / samplingFreq;
             double amplitude = 10;
-            double offset = 0;
-            double cutoffFreq = 10;
+            //double offset = 0;
+            //double cutoffFreq = 10;
 
-            var xxx = new List<double>();
+            Debug.WriteLine("input");
+            var input = new List<double>();
             for (int i = 0; i < samplingNum; i++)
             {
-                xxx.Add(GetSwept(i * samplingTime, samplingTime, samplingNum, amplitude));
-                Debug.WriteLine(xxx[i]);
+                input.Add(GetSwept(i * samplingTime, samplingTime, samplingNum, amplitude));
+                Debug.WriteLine(input[i]);
             }
 
-            var result = sav.Process(xxx.ToArray());
-            foreach (var yyy in result)
+            Debug.WriteLine("output");
+            var output = sav.Process(input.ToArray());
+            foreach (var item in output)
             {
-                //Console.WriteLine(yyy);
-                Debug.WriteLine(yyy);
+                Debug.WriteLine(item);
             }
-            result = result;
         }
 
         private double GetSwept(double sec, double samplingSec, int samplingNum, double amplitude)

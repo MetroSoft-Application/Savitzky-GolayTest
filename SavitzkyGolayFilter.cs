@@ -1,8 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using MathNet.Numerics.LinearAlgebra;
 
 namespace Savitzky_GolayTest
@@ -10,7 +6,6 @@ namespace Savitzky_GolayTest
     public class SavitzkyGolayFilter
     {
         private readonly int sidePoints;
-
         private Matrix<double> coefficients;
 
         public SavitzkyGolayFilter(int sidePoints, int polynomialOrder)
@@ -19,45 +14,69 @@ namespace Savitzky_GolayTest
             Design(polynomialOrder);
         }
 
-        /// <summary>
-        /// Smoothes the input samples.
-        /// </summary>
-        /// <param name="samples"></param>
-        /// <returns></returns>
         public double[] Process(double[] samples)
         {
             int length = samples.Length;
             double[] output = new double[length];
-            int frameSize = (sidePoints << 1) + 1;
+            int frameSize = CalculateFrameSize();
             double[] frame = new double[frameSize];
 
-            Array.Copy(samples, frame, frameSize);
-
-            for (int i = 0; i < sidePoints; ++i)
-            {
-                output[i] = coefficients.Column(i).DotProduct(Vector<double>.Build.DenseOfArray(frame));
-            }
-
-            for (int n = sidePoints; n < length - sidePoints; ++n)
-            {
-                Array.ConstrainedCopy(samples, n - sidePoints, frame, 0, frameSize);
-                output[n] = coefficients.Column(sidePoints).DotProduct(Vector<double>.Build.DenseOfArray(frame));
-            }
-
-            Array.ConstrainedCopy(samples, length - frameSize, frame, 0, frameSize);
-
-            for (int i = 0; i < sidePoints; ++i)
-            {
-                output[length - sidePoints + i] = coefficients.Column(sidePoints + 1 + i).DotProduct(Vector<double>.Build.Dense(frame));
-            }
+            ProcessBeginning(samples, output, frame);
+            ProcessMiddle(samples, output, frame);
+            ProcessEnd(samples, output, frame);
 
             return output;
         }
 
+        private void ProcessBeginning(double[] samples, double[] output, double[] frame)
+        {
+            Array.Copy(samples, frame, frame.Length);
+            for (int i = 0; i < sidePoints; ++i)
+            {
+                output[i] = CalculateDotProduct(frame, i);
+            }
+        }
+
+        private void ProcessMiddle(double[] samples, double[] output, double[] frame)
+        {
+            int length = samples.Length;
+            int frameSize = CalculateFrameSize();
+            for (int n = sidePoints; n < length - sidePoints; ++n)
+            {
+                Array.ConstrainedCopy(samples, n - sidePoints, frame, 0, frameSize);
+                output[n] = CalculateDotProduct(frame, sidePoints);
+            }
+        }
+
+        private void ProcessEnd(double[] samples, double[] output, double[] frame)
+        {
+            int length = samples.Length;
+            Array.ConstrainedCopy(samples, length - frame.Length, frame, 0, frame.Length);
+            for (int i = 0; i < sidePoints; ++i)
+            {
+                output[length - sidePoints + i] = CalculateDotProduct(frame, sidePoints + 1 + i);
+            }
+        }
+
+        private double CalculateDotProduct(double[] frame, int columnIndex)
+        {
+            return coefficients.Column(columnIndex).DotProduct(Vector<double>.Build.DenseOfArray(frame));
+        }
+
+        private int CalculateFrameSize()
+        {
+            return (sidePoints << 1) + 1;
+        }
+
         private void Design(int polynomialOrder)
         {
-            double[,] a = new double[(sidePoints << 1) + 1, polynomialOrder + 1];
+            var s = BuildMatrixS(polynomialOrder);
+            coefficients = CalculateCoefficients(s);
+        }
 
+        private Matrix<double> BuildMatrixS(int polynomialOrder)
+        {
+            double[,] a = new double[CalculateFrameSize(), polynomialOrder + 1];
             for (int m = -sidePoints; m <= sidePoints; ++m)
             {
                 for (int i = 0; i <= polynomialOrder; ++i)
@@ -65,9 +84,15 @@ namespace Savitzky_GolayTest
                     a[m + sidePoints, i] = Math.Pow(m, i);
                 }
             }
+            return Matrix<double>.Build.DenseOfArray(a);
+        }
 
-            Matrix<double> s = Matrix<double>.Build.DenseOfArray(a);
-            coefficients = s.Multiply(s.TransposeThisAndMultiply(s).Inverse()).Multiply(s.Transpose());
+        private Matrix<double> CalculateCoefficients(Matrix<double> s)
+        {
+            var sTranspose = s.Transpose();
+            var sTransposeTimesS = sTranspose.Multiply(s);
+            var inverseOfSTransposeTimesS = sTransposeTimesS.Inverse();
+            return s.Multiply(inverseOfSTransposeTimesS).Multiply(sTranspose);
         }
     }
 }
